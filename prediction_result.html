@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="shortcut icon" href="https://cdn1.iconfinder.com/data/icons/transportation-28/100/4_Train-512.png"
+        type="image/x-icon" />
+    <title>Prediction Results</title>
+    <!-- Load Chart.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        @import url("https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap");
+
+        body {
+            font-family: "Montserrat", sans-serif;
+            background-color: #ffffff;
+            color: #1a1a1a;
+            padding: 20px;
+        }
+
+        body>div {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            align-items: center;
+            align-content: center;
+            gap: 25px;
+        }
+
+        h2,
+        h3 {
+            font-size: 52px;
+            color: #1a1a1a;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 24px;
+            letter-spacing: 1px;
+            font-weight: 300;
+            color: #1a1a1a;
+            text-align: center;
+        }
+
+        canvas {
+            padding: 15px;
+            margin: 0 auto;
+            display: block;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Forecasted Traffic</h2>
+    <p>Arrival: {{ prediction.enter_count }} passengers</p>
+    <p>Departure: {{ prediction.leave_count }} passengers</p>
+
+    <!-- Chart for day_results -->
+    <h3>Day Prediction</h3>
+    <canvas id="dailyPredictionChart" width="1250" height="400"></canvas>
+
+    <!-- Chart for week_results -->
+    <h3>Week Prediction</h3>
+    <canvas id="weeklyPredictionChart" width="800" height="400"></canvas>
+
+    <div>
+        <div>
+            <!-- Pie chart for daily predictions by hours -->
+            <h3>Daily Prediction by Hours</h3>
+            <canvas id="dailyHourlyPieChart" width="600" height="400"></canvas>
+        </div>
+        <div>
+            <!-- Pie chart for weekly predictions by days -->
+            <h3>Weekly Prediction by Days</h3>
+            <canvas id="weeklyDailyPieChart" width="600" height="400"></canvas>
+        </div>
+    </div>
+    <footer>
+        <p>Team No. 5</p>
+        <p>2.2 CSM B AIML</p>
+        <p>MRCE</p>
+    </footer>
+    <script>
+        // Extracting week_results and day_results from Django context
+        const weekResults = JSON.parse("{{ week_results|escapejs }}");
+        const dayResults = JSON.parse("{{ day_results|escapejs }}");
+
+        // Extracting predicted values for entering and leaving people
+        const enteringWeekData = weekResults.map(
+            (dayResult) => dayResult[0] * 24
+        );
+        const leavingWeekData = weekResults.map((dayResult) => dayResult[1] * 24);
+
+        const enteringDayData = dayResults.map((dayResult) => dayResult[0]);
+        const leavingDayData = dayResults.map((dayResult) => dayResult[1]);
+
+        // Aggregate data for daily predictions by hours
+        const dailyHourlyData = [];
+        for (let i = 0; i < dayResults.length; i++) {
+            dailyHourlyData.push({
+                hour: `Hour ${i}`,
+                entering: enteringDayData[i],
+                leaving: leavingDayData[i],
+            });
+        }
+
+        // Aggregate data for weekly predictions by days
+        const weeklyDailyData = [
+            {
+                day: "Monday", 
+                entering: enteringWeekData[0], 
+                leaving: leavingWeekData[0]
+            },
+            {
+                day: "Tuesday", 
+                entering: enteringWeekData[1], 
+                leaving: leavingWeekData[1]
+            },
+            {
+                day: "Wednesday", 
+                entering: enteringWeekData[2], 
+                leaving: leavingWeekData[2]
+            },
+            {
+                day: "Thursday", 
+                entering: enteringWeekData[3], 
+                leaving: leavingWeekData[3]
+            },
+            {
+                day: "Friday",
+                entering: enteringWeekData[4], 
+                leaving: leavingWeekData[4]
+            },
+            {
+                day: "Saturday", 
+                entering: enteringWeekData[5], 
+                leaving: leavingWeekData[5]
+            },
+            {
+                day: "Sunday", 
+                entering: enteringWeekData[6], 
+                leaving: leavingWeekData[6]
+            },
+        ];
+        const rainbowColors = [
+            "rgba(255, 99, 132, 0.6)",
+            "rgba(255, 159, 64, 0.6)",
+            "rgba(255, 205, 86, 0.6)",
+            "rgba(75, 192, 192, 0.6)",
+            "rgba(54, 162, 235, 0.6)",
+            "rgba(153, 102, 255, 0.6)",
+            "rgba(201, 203, 207, 0.6)",
+        ];
+
+        // Chart.js code to create a bar chart
+        const ctxWeekly = document
+            .getElementById("weeklyPredictionChart")
+            .getContext("2d");
+        const weeklyPredictionChart = new Chart(ctxWeekly, {
+            type: "bar",
+            data: {
+                labels: ["Monday”, “Tuesday”, “Wednesday”, “Thursday”, “Friday”, “Saturday”, “Sunday"],
+                datasets: [
+                    {
+                        label: "People Entering",
+                        data: enteringWeekData,
+                        backgroundColor: "rgba(54, 162, 235, 0.6)",
+                        borderColor: "rgba(54, 162, 235, 1)",
+                        borderWidth: 1,
+                    },
+                    {
+                        label: "People Leaving",
+                        data: leavingWeekData,
+                        backgroundColor: "rgba(255, 99, 132, 0.6)",
+                        borderColor: "rgba(255, 99, 132, 1)",
+                        borderWidth: 1,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        stacked: true,
+                    },
+                    y: {
+                        stacked: true,
+                    },
+                },
+                plugins: {
+                    animation: {
+                        duration: 1500,
+                        easing: "easeInOutQuart",
+                    },
+                },
+            },
+        });
+
+        // Chart.js code to create a pie chart
+        const ctxDailyHourlyPie = document
+            .getElementById("dailyHourlyPieChart")
+            .getContext("2d");
+        const dailyHourlyPieChart = new Chart(ctxDailyHourlyPie, {
+            type: "pie",
+            data: {
+                labels: dailyHourlyData.map((entry) => entry.hour),
+                datasets: [
+                    {
+                        label: "People Entering",
+                        data: dailyHourlyData.map((entry) => entry.entering),
+                        backgroundColor: rainbowColors.slice(0, dailyHourlyData.length),
+                        borderColor: "rgba(255, 255, 255, .3)",
+                        borderWidth: 1,
+                    },
+                    {
+                        label: "People Leaving",
+                        data: dailyHourlyData.map((entry) => entry.leaving),
+                        backgroundColor: rainbowColors.slice(0, dailyHourlyData.length),
+                        borderColor: "rgba(255, 255, 255, .3)",
+                        borderWidth: 1,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: "top",
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: "easeInOutQuart",
+                    },
+                },
+            },
+        });
+
+        $(document).ready(function () {
+            $("h2, h3, p, canvas").hide().fadeIn(1000);
+            $("#dailyPredictionChart").css("display", "inline");
+            $("#weeklyPredictionChart").css("display", "inline");
+            $("#dailyHourlyPieChart").css("display", "inline");
+            $("#weeklyDailyPieChart").css("display", "inline");
+        });
+    </script>
+</body>
+
+</html>
